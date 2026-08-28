@@ -35,6 +35,50 @@ For each target file in the desired sequence (e.g., File 5 through 12), the algo
 4. **Targeted Redaction:** Locate the exact physical X/Y coordinates of the original data points on the document page.
 5. **Clean Overwrite:** Delete the old text strings without affecting the background colors or table grids. Insert the newly calculated values into the exact same coordinates, matching the original font size, weight, and color.
 
+## Flow Diagram
+```mermaid
+flowchart TD
+    Start([Start: Input Base PDF]) --> ReadText[Read PDF Text Data]
+
+    subgraph Phase 1: Environment Analysis
+        ReadText --> ExtractIDs[Extract Base File Name & Fiber ID]
+        ExtractIDs --> ExtractDates[Extract All Dates & Determine Max Date]
+        ExtractDates --> ExtractTime[Extract Base Test Time]
+        ExtractTime --> TopologyCheck{Is Splice Loss Data Present?}
+        
+        TopologyCheck -- Yes --> TrackA_Setup[Set Mode: Track A Multi-Splice]
+        TopologyCheck -- No --> TrackB_Setup[Set Mode: Track B Single-Span]
+        
+        TrackA_Setup --> ExtractSpan[Extract Span Length & Original Span Loss]
+        TrackB_Setup --> ExtractSpan
+    end
+
+    ExtractSpan --> LoopStart([Start Loop: Generate Next File])
+
+    subgraph Phase 2: Iterative Generation Loop
+        LoopStart --> UpdateIDs[Decoupled Increment: +1 to File Num & Fiber ID]
+        UpdateIDs --> UpdateTime[Advance Time: Add random 4-12 min gap]
+        UpdateTime --> UpdateDate[Standardize Date: Overwrite with Max Date]
+        UpdateDate --> MathCheck{Which Topology Mode?}
+
+        MathCheck -- Track A --> MathA[Randomize Splice Loss ±10%<br>Recalculate overall Span Loss<br>Recalculate Average Loss]
+        MathCheck -- Track B --> MathB[Randomize Span Loss directly<br>Recalculate Average Loss]
+
+        MathA --> SortDict[Store & Sort Replacements<br>Longest strings first to prevent overlaps]
+        MathB --> SortDict
+
+        SortDict --> OpenCopy[Open Fresh Copy of Base PDF]
+        OpenCopy --> FindCoords[Find Exact X/Y Coordinates of Old Text]
+        FindCoords --> Redact[Redact Old Text<br>Leaves background/colors intact]
+        Redact --> Insert[Insert New Text<br>Matches original font size and color]
+        Insert --> Save[Save as New Generated PDF]
+    end
+
+    Save --> LoopCheck{More files to generate?}
+    LoopCheck -- Yes --> LoopStart
+    LoopCheck -- No --> End([End: Batch Generation Complete])
+```
+
 ## Key Features
 
 * **Decoupled IDs:** Handles environments where the File Number and Fiber ID do not match.
